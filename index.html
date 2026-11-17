@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>dim-boilerplate — encrypted notes</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+    </style>
+    <!--
+      Inline classic script so document.write runs while the parser is open.
+      That sync-loads the Dim IIFE from GitHub Pages before runtime.js / notes / app.js.
+      Classic https:// scripts work from file://; dimui atoms use ESM import() instead.
+    -->
+    <script>
+      (function () {
+        var STORAGE_KEY = "dim-boilerplate-impl";
+        var DIM_LIB = "https://positive-intentions.github.io/dim/lib/";
+        var impl = "js";
+        try {
+          var q = new URLSearchParams(location.search || "").get("impl") || "";
+          q = String(q).toLowerCase();
+          if (q === "js" || q === "wasm") {
+            impl = q;
+            try {
+              localStorage.setItem(STORAGE_KEY, impl);
+            } catch (e) {}
+          } else {
+            var stored = (localStorage.getItem(STORAGE_KEY) || "").toLowerCase();
+            if (stored === "js" || stored === "wasm") impl = stored;
+          }
+        } catch (e) {}
+        document.documentElement.dataset.dimRuntime = impl;
+        var src =
+          impl === "wasm"
+            ? DIM_LIB + "dim.wasm.global.js"
+            : DIM_LIB + "dim.global.js";
+        document.write('<script src="' + src + '"><\/script>');
+      })();
+    </script>
+    <script src="./runtime.js"></script>
+
+    <!-- lib -->
+    <script src="./notes/lib/vault.js"></script>
+    <script src="./notes/lib/tokens.js"></script>
+    <script src="./notes/lib/theme.js"></script>
+    <script src="./notes/lib/mockData.js"></script>
+    <script src="./notes/lib/sharedKeys.js"></script>
+    <script src="./notes/lib/note-filters.js"></script>
+
+    <!-- atoms (proxies → remote dimui) -->
+    <script src="./notes/components/atoms/button.js"></script>
+    <script src="./notes/components/atoms/icon.js"></script>
+    <script src="./notes/components/atoms/icon-button.js"></script>
+    <script src="./notes/components/atoms/chip.js"></script>
+    <script src="./notes/components/atoms/text-field.js"></script>
+    <script src="./notes/components/atoms/empty-state.js"></script>
+    <script src="./notes/components/atoms/fab.js"></script>
+
+    <!-- molecules -->
+    <script src="./notes/components/molecules/search-field.js"></script>
+    <script src="./notes/components/molecules/confirm-dialog.js"></script>
+    <script src="./notes/components/molecules/folder-item.js"></script>
+    <script src="./notes/components/molecules/mobile-folder-bar.js"></script>
+    <script src="./notes/components/molecules/notes-header.js"></script>
+    <script src="./notes/components/molecules/note-item.js"></script>
+
+    <!-- organisms -->
+    <script src="./notes/components/organisms/folder-rail.js"></script>
+    <script src="./notes/components/organisms/unlock-screen.js"></script>
+    <script src="./notes/components/organisms/note-list.js"></script>
+    <script src="./notes/components/organisms/note-editor.js"></script>
+    <script src="./notes/components/organisms/navigation-view.js"></script>
+    <script src="./notes/components/organisms/notes-shell.js"></script>
+
+    <!-- templates + pages -->
+    <script src="./notes/components/templates/notes-layout.js"></script>
+    <script src="./notes/components/pages/notes-app.js"></script>
+
+    <script src="./app.js"></script>
+  </head>
+  <body>
+    <boilerplate-app></boilerplate-app>
+  </body>
+</html>
