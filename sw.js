@@ -13,7 +13,7 @@
  */
 /* eslint-disable no-restricted-globals */
 (function () {
-  var CACHE_VERSION = "dim-boilerplate-v2";
+  var CACHE_VERSION = "dim-boilerplate-v3";
   var CDN_ORIGIN = "https://positive-intentions.github.io";
   var CDN_PREFIXES = {
     dim: CDN_ORIGIN + "/dim/",
@@ -29,7 +29,11 @@
     "./manifest.webmanifest",
     "./icons/icon-192.png",
     "./icons/icon-512.png",
+    "./icons/icon-maskable-192.png",
+    "./icons/icon-maskable-512.png",
     "./icons/icon.svg",
+    "./screenshots/narrow.png",
+    "./screenshots/wide.png",
     "./notes/lib/vault.js",
     "./notes/lib/tokens.js",
     "./notes/lib/theme.js",

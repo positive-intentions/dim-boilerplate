@@ -1,13 +1,110 @@
 /**
- * Registers the service worker (HTTPS / localhost only) and harvests loaded
- * Dim / dimui resource URLs so the worker can cache them for offline use.
- * No-ops on file:// where service workers are unavailable.
+ * Registers the service worker (HTTPS / localhost only), harvests loaded
+ * Dim / dimui resource URLs for offline cache, and exposes install-prompt
+ * helpers for an in-app Install button (beforeinstallprompt + iOS tip).
  */
 (function () {
-  if (!("serviceWorker" in navigator)) return;
-  if (location.protocol === "file:") return;
-
   var CDN_ORIGIN = "https://positive-intentions.github.io";
+  var listeners = [];
+  var deferredPrompt = null;
+
+  function isStandalone() {
+    try {
+      if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) {
+        return true;
+      }
+    } catch (e) {}
+    return !!(navigator.standalone);
+  }
+
+  function isIos() {
+    var ua = navigator.userAgent || "";
+    var iOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    return iOS;
+  }
+
+  function isSafari() {
+    var ua = navigator.userAgent || "";
+    return /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium/.test(ua);
+  }
+
+  function notify() {
+    var snap = getSnapshot();
+    for (var i = 0; i < listeners.length; i++) {
+      try {
+        listeners[i](snap);
+      } catch (e) {}
+    }
+  }
+
+  function getSnapshot() {
+    var standalone = isStandalone();
+    var ios = isIos();
+    return {
+      canInstall: !standalone && !!deferredPrompt,
+      showIosTip: !standalone && ios && isSafari(),
+      isStandalone: standalone,
+      insecure:
+        !standalone &&
+        location.protocol !== "https:" &&
+        location.hostname !== "localhost" &&
+        location.hostname !== "127.0.0.1",
+    };
+  }
+
+  function subscribe(cb) {
+    if (typeof cb !== "function") return function () {};
+    listeners.push(cb);
+    try {
+      cb(getSnapshot());
+    } catch (e) {}
+    return function unsubscribe() {
+      var idx = listeners.indexOf(cb);
+      if (idx !== -1) listeners.splice(idx, 1);
+    };
+  }
+
+  function promptInstall() {
+    if (!deferredPrompt) return Promise.resolve({ outcome: "dismissed" });
+    var event = deferredPrompt;
+    deferredPrompt = null;
+    notify();
+    event.prompt();
+    return event.userChoice
+      .then(function (choice) {
+        notify();
+        return choice;
+      })
+      .catch(function () {
+        notify();
+        return { outcome: "dismissed" };
+      });
+  }
+
+  globalThis.DimPwa = {
+    subscribe: subscribe,
+    promptInstall: promptInstall,
+    getSnapshot: getSnapshot,
+  };
+
+  if (!isStandalone()) {
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      notify();
+    });
+
+    window.addEventListener("appinstalled", function () {
+      deferredPrompt = null;
+      notify();
+    });
+  }
+
+  if (!("serviceWorker" in navigator) || location.protocol === "file:") {
+    return;
+  }
 
   function isHarvestable(url) {
     if (!url || typeof url !== "string") return false;
@@ -80,6 +177,10 @@
       });
     })
     .catch(function (err) {
-      console.warn("[pwa] service worker registration failed:", err);
+      console.warn(
+        "[pwa] service worker registration failed (install needs HTTPS or localhost):",
+        err,
+      );
+      notify();
     });
 })();

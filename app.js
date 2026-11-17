@@ -65,6 +65,36 @@
     header.bar button:hover {
       background: var(--dimui-doc-surface-hover, #334155);
     }
+    header.bar button.install {
+      border-color: var(--dimui-doc-primary, #029cfd);
+      color: var(--dimui-doc-primary, #029cfd);
+    }
+    .ios-tip {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin: 0;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--dimui-doc-border, #334155);
+      background: var(--dimui-doc-surface-2, #0b1220);
+      color: var(--dimui-doc-text-muted, #94a3b8);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    .ios-tip strong {
+      color: var(--dimui-doc-text, #e2e8f0);
+      font-weight: 600;
+    }
+    .ios-tip button {
+      appearance: none;
+      margin-left: auto;
+      border: none;
+      background: transparent;
+      color: var(--dimui-doc-text-muted, #94a3b8);
+      font: inherit;
+      cursor: pointer;
+      padding: 0 0.25rem;
+    }
     .body {
       flex: 1 1 auto;
       min-height: 0;
@@ -153,6 +183,17 @@
         );
         var theme = themeState[0];
         var setTheme = themeState[1];
+        var installState = state({
+          canInstall: false,
+          showIosTip: false,
+          isStandalone: false,
+          insecure: false,
+        });
+        var install = installState[0];
+        var setInstall = installState[1];
+        var tipDismissedState = state(false);
+        var tipDismissed = tipDismissedState[0];
+        var setTipDismissed = tipDismissedState[1];
         var impl = currentImpl();
 
         if (NotesApp) {
@@ -173,14 +214,39 @@
           });
         }, []);
 
+        effect(function () {
+          var dimPwa = globalThis.DimPwa;
+          if (!dimPwa || !dimPwa.subscribe) return;
+          return dimPwa.subscribe(function (snap) {
+            setInstall(snap);
+          });
+        }, []);
+
         if (bootError) {
           return tpl`<div class="error" role="alert">${bootError}</div>`;
         }
+
+        var showIosTip = install.showIosTip && !tipDismissed;
+        var showInstall = install.canInstall;
 
         return tpl`
           <header class="bar">
             <h1>dim-boilerplate — encrypted notes</h1>
             <span class="meta">runtime: ${impl}</span>
+            ${
+              showInstall
+                ? tpl`<button
+              type="button"
+              class="install"
+              @click="${function () {
+                var dimPwa = globalThis.DimPwa;
+                if (dimPwa && dimPwa.promptInstall) dimPwa.promptInstall();
+              }}"
+            >
+              Install
+            </button>`
+                : ""
+            }
             <button
               type="button"
               class="${impl === "js" ? "active" : ""}"
@@ -208,6 +274,25 @@
               ${theme === "light" ? "Dark" : "Light"}
             </button>
           </header>
+          ${
+            showIosTip
+              ? tpl`<div class="ios-tip" role="status">
+            <span>
+              <strong>Add to Home Screen:</strong>
+              tap Share, then Add to Home Screen.
+            </span>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              @click="${function () {
+                setTipDismissed(true);
+              }}"
+            >
+              ×
+            </button>
+          </div>`
+              : ""
+          }
           <div class="body">
             <dimui-notes-app />
           </div>

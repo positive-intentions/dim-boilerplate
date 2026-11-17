@@ -1,11 +1,37 @@
-# dim-boilerplate
+<p align="center">
+  <img src="public/dim.png" alt="Dim Framework Logo" width="200" />
+</p>
 
-An **encrypted notes** demo for building with
-[@positive-intentions/dim](https://github.com/positive-intentions/dim) using
-**plain JavaScript** — no app-side transpile, no npm install, no bundler.
+<h1 align="center">dim-boilerplate</h1>
 
-Open [`index.html`](./index.html) in Chrome (double-click / `file://`) or visit
-the live site: https://positive-intentions.github.io/dim-boilerplate/
+<p align="center">
+  <strong>Encrypted notes demo for building with Dim — plain JavaScript</strong>
+</p>
+
+<p align="center">
+  No app-side transpile, no npm install, no bundler. Open
+  <a href="./index.html"><code>index.html</code></a> in Chrome or use the live site.
+</p>
+
+<div align="center">
+  
+[**Live Demo**](https://positive-intentions.github.io/dim-boilerplate/) | [**dim**](https://github.com/positive-intentions/dim) | [**dimui**](https://github.com/positive-intentions/dimui)
+
+</div>
+
+<div align="center">
+  
+![GitHub stars](https://img.shields.io/github/stars/positive-intentions/dim-boilerplate?style=social) 
+![GitHub forks](https://img.shields.io/github/forks/positive-intentions/dim-boilerplate?style=social) 
+![GitHub issues](https://img.shields.io/github/issues/positive-intentions/dim-boilerplate) 
+![npm](https://img.shields.io/npm/v/@positive-intentions/dim)
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
+![Deploy](https://github.com/positive-intentions/dim-boilerplate/actions/workflows/deploy-pages.yml/badge.svg)
+[![gh-pages-build-deployment](https://github.com/positive-intentions/dim-boilerplate/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/positive-intentions/dim-boilerplate/actions/workflows/pages/pages-build-deployment)
+
+</div>
+
+---
 
 Your **application logic** is ordinary `.js` files in this repo. The Dim
 runtime and reusable [dimui](https://github.com/positive-intentions/dimui)
@@ -96,10 +122,12 @@ dim-boilerplate/
 ├── index.html              # loads Dim + all classic scripts + PWA meta
 ├── runtime.js              # import map + BP + dimui/* resolver
 ├── app.js                  # host chrome (JS/WASM + theme toggles)
-├── pwa.js                  # registers service worker + harvests CDN URLs
+├── pwa.js                  # SW register + CDN harvest + install prompt API
 ├── sw.js                   # precache + stale-while-revalidate + CDN proxy
-├── manifest.webmanifest    # installable app metadata
-├── icons/                  # 192 / 512 / SVG PWA icons
+├── manifest.webmanifest    # installable app metadata (+ screenshots)
+├── public/                 # README logo (dim.png)
+├── icons/                  # 192 / 512 / maskable / SVG PWA icons
+├── screenshots/            # narrow + wide images for richer install UI
 └── notes/
     ├── lib/         # vault helpers, tokens, seed data
     └── components/
@@ -127,24 +155,44 @@ Runtimes: `?impl=js` or `?impl=wasm` (also in the header). Choice is stored in
 
 ## PWA / offline
 
-On **HTTPS** or **localhost** (not `file://`):
+On **HTTPS** or **localhost** (not `file://`, and not typical LAN
+`http://192.168.x.x`):
 
 1. First visit loads Dim + dimui from their GitHub Pages CDNs and registers
    [`sw.js`](./sw.js). The worker precaches this app’s shell and harvests the
    CDN URLs that actually loaded.
-2. Later visits (even without “Install app”) are controlled by the service
+2. Later visits (even without installing) are controlled by the service
    worker. Dim/dimui are requested via same-scope `./pwa/cdn/...` paths so the
    worker can intercept them, serve the cache immediately, and revalidate in
    the background (stale-while-revalidate).
 3. Offline after that first visit: the notes UI boots from cache. Encrypted
    vault data still lives in IndexedDB as before.
 
-`file://` cannot use service workers — double-clicking `index.html` still
-needs network for Dim + dimui. Use a local static server or the live Pages
-URL to exercise the PWA path.
+### Install
 
-[`manifest.webmanifest`](./manifest.webmanifest) enables install / standalone
-display; the browser’s own install UI is enough (no custom install button).
+[`manifest.webmanifest`](./manifest.webmanifest) makes the app installable
+(standalone display, icons, screenshots). Chrome does **not** always show an
+automatic banner: it waits for engagement heuristics (about **30 seconds** on
+the page plus at least one tap) and may hide the mini-infobar if the user
+dismissed it earlier.
+
+This app surfaces install explicitly:
+
+- **Android / desktop Chromium** — after the criteria are met,
+  `beforeinstallprompt` enables an **Install** button in the header. Tapping
+  it opens the system install dialog. The button is hidden in standalone /
+  already-installed mode.
+- **iOS Safari** — there is no install prompt API. A short tip points to
+  **Share → Add to Home Screen** (meta tags + apple-touch-icon are already
+  set).
+- **Insecure context** — service workers and installability need HTTPS or
+  localhost. Opening via `file://` or a plain HTTP LAN IP will not register
+  the worker or fire `beforeinstallprompt`.
+
+`file://` cannot use service workers — double-clicking `index.html` still
+needs network for Dim + dimui. Use a local static server
+(`npx serve .` / `python -m http.server`) on localhost, or the live Pages
+URL, to exercise the PWA path.
 
 ## Deploy
 
