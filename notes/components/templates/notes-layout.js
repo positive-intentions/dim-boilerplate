@@ -23,7 +23,6 @@ BP.module(
       .notes-app {
         display: flex;
         flex-direction: row;
-        min-height: 100vh;
         height: 100%;
         background: var(--notes-bg);
         color: var(--notes-text);

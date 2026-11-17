@@ -23,7 +23,8 @@
     :host {
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       background: var(--dimui-doc-bg, #0f172a);
       color: var(--dimui-doc-text, #e2e8f0);

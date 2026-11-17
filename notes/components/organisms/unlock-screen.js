@@ -19,7 +19,6 @@ BP.module(
       .frame {
         display: flex;
         flex-direction: column;
-        min-height: 100vh;
         height: 100%;
         background: var(--notes-bg);
         color: var(--notes-text);
