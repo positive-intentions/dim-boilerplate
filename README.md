@@ -93,9 +93,13 @@ flowchart TD
 
 ```
 dim-boilerplate/
-├── index.html       # loads Dim + all classic scripts
-├── runtime.js       # import map + BP + dimui/* resolver
-├── app.js           # host chrome (JS/WASM + theme toggles)
+├── index.html              # loads Dim + all classic scripts + PWA meta
+├── runtime.js              # import map + BP + dimui/* resolver
+├── app.js                  # host chrome (JS/WASM + theme toggles)
+├── pwa.js                  # registers service worker + harvests CDN URLs
+├── sw.js                   # precache + stale-while-revalidate + CDN proxy
+├── manifest.webmanifest    # installable app metadata
+├── icons/                  # 192 / 512 / SVG PWA icons
 └── notes/
     ├── lib/         # vault helpers, tokens, seed data
     └── components/
@@ -121,6 +125,27 @@ buttons/icons come through atom proxies.
 Runtimes: `?impl=js` or `?impl=wasm` (also in the header). Choice is stored in
 `localStorage`.
 
+## PWA / offline
+
+On **HTTPS** or **localhost** (not `file://`):
+
+1. First visit loads Dim + dimui from their GitHub Pages CDNs and registers
+   [`sw.js`](./sw.js). The worker precaches this app’s shell and harvests the
+   CDN URLs that actually loaded.
+2. Later visits (even without “Install app”) are controlled by the service
+   worker. Dim/dimui are requested via same-scope `./pwa/cdn/...` paths so the
+   worker can intercept them, serve the cache immediately, and revalidate in
+   the background (stale-while-revalidate).
+3. Offline after that first visit: the notes UI boots from cache. Encrypted
+   vault data still lives in IndexedDB as before.
+
+`file://` cannot use service workers — double-clicking `index.html` still
+needs network for Dim + dimui. Use a local static server or the live Pages
+URL to exercise the PWA path.
+
+[`manifest.webmanifest`](./manifest.webmanifest) enables install / standalone
+display; the browser’s own install UI is enough (no custom install button).
+
 ## Deploy
 
 Published from **`staging`** with no build step
@@ -128,7 +153,8 @@ Published from **`staging`** with no build step
 
 https://positive-intentions.github.io/dim-boilerplate/
 
-Same files as on disk — Pages is just another host.
+Same files as on disk — Pages is just another host (including `sw.js`,
+`pwa.js`, `manifest.webmanifest`, and `icons/`).
 
 ## Adding a component
 
@@ -145,12 +171,15 @@ In Dim `html\`...\`` templates, childless custom elements may use
 
 ## Caveats
 
-- Needs network for Dim and dimui CDNs (nothing vendored offline here).
+- First HTTPS/localhost visit still needs network for Dim and dimui CDNs;
+  later visits can run offline via the service worker (nothing vendored into
+  this repo).
 - CDN builds track dim / dimui Pages deploys (`staging` for dimui).
 - Local `notes/` tracks
   [dimui’s notes demo](https://github.com/positive-intentions/dimui/tree/staging/src/demos/notes);
   re-sync manually when that demo changes.
-- On `file://`, IndexedDB is shared across local HTML files in Chrome.
+- On `file://`, IndexedDB is shared across local HTML files in Chrome; service
+  workers do not run on `file://`.
 - Strict CSP: allow `'wasm-unsafe-eval'` for WASM Dim and `data:` for the Dim
   import-map shim.
 

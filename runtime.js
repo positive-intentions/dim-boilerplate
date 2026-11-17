@@ -14,13 +14,21 @@
  * before this shim is built.
  */
 (function () {
-  var DIMUI_SRC = "https://positive-intentions.github.io/dimui/src/";
-  var DIM_LIB = "https://positive-intentions.github.io/dim/lib/";
+  var CDN_DIMUI_SRC = "https://positive-intentions.github.io/dimui/src/";
+  var CDN_DIM_LIB = "https://positive-intentions.github.io/dim/lib/";
+  // When a service worker already controls the page, route Dim/dimui through
+  // same-scope proxy paths so the worker can intercept and serve them offline.
+  var controlled =
+    typeof navigator !== "undefined" &&
+    navigator.serviceWorker &&
+    navigator.serviceWorker.controller;
+  var DIMUI_SRC = controlled ? "./pwa/cdn/dimui/src/" : CDN_DIMUI_SRC;
+  var DIM_LIB = controlled ? "./pwa/cdn/dim/lib/" : CDN_DIM_LIB;
 
   if (!globalThis.Dim) {
     throw new Error(
       "Dim global missing. The inline script in index.html should have loaded " +
-        DIM_LIB +
+        CDN_DIM_LIB +
         "dim.global.js (or dim.wasm.global.js).",
     );
   }
@@ -48,6 +56,8 @@
   globalThis.__DIM_BOILERPLATE__ = {
     impl: document.documentElement.dataset.dimRuntime || "js",
     dimuiSrc: DIMUI_SRC,
+    dimLib: DIM_LIB,
+    pwaControlled: !!controlled,
   };
 
   // -------------------------------------------------------------------------

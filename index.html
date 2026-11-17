@@ -4,6 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>dim-boilerplate — encrypted notes</title>
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Notes" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
     <style>
       html,
       body {
@@ -17,11 +24,18 @@
       Inline classic script so document.write runs while the parser is open.
       That sync-loads the Dim IIFE from GitHub Pages before runtime.js / notes / app.js.
       Classic https:// scripts work from file://; dimui atoms use ESM import() instead.
+      When a service worker already controls the page, Dim is loaded via the
+      same-scope ./pwa/cdn/ proxy so the worker can serve it offline.
     -->
     <script>
       (function () {
         var STORAGE_KEY = "dim-boilerplate-impl";
-        var DIM_LIB = "https://positive-intentions.github.io/dim/lib/";
+        var CDN_DIM_LIB = "https://positive-intentions.github.io/dim/lib/";
+        var controlled =
+          typeof navigator !== "undefined" &&
+          navigator.serviceWorker &&
+          navigator.serviceWorker.controller;
+        var DIM_LIB = controlled ? "./pwa/cdn/dim/lib/" : CDN_DIM_LIB;
         var impl = "js";
         try {
           var q = new URLSearchParams(location.search || "").get("impl") || "";
@@ -84,6 +98,7 @@
     <script src="./notes/components/pages/notes-app.js"></script>
 
     <script src="./app.js"></script>
+    <script src="./pwa.js"></script>
   </head>
   <body>
     <boilerplate-app></boilerplate-app>

@@ -24,8 +24,9 @@ jobs:
       - name: Prepare Pages artifact
         run: |
           mkdir -p _site
-          cp index.html runtime.js app.js README.md _site/
+          cp index.html runtime.js app.js pwa.js sw.js manifest.webmanifest README.md _site/
           cp -r notes _site/notes
+          cp -r icons _site/icons
           touch _site/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
