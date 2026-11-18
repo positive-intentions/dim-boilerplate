@@ -120,6 +120,7 @@ flowchart TD
 ```
 dim-boilerplate/
 ├── index.html              # loads Dim + all classic scripts + PWA meta
+├── runTests.html           # DimTest runner + live coverage (no tests/ folder)
 ├── runtime.js              # import map + BP + dimui/* resolver
 ├── app.js                  # host chrome (JS/WASM + theme toggles)
 ├── pwa.js                  # SW register + CDN harvest + install prompt API
@@ -129,16 +130,16 @@ dim-boilerplate/
 ├── icons/                  # 192 / 512 / maskable / SVG PWA icons
 ├── screenshots/            # narrow + wide images for richer install UI
 └── notes/
-    ├── lib/         # vault helpers, tokens, seed data
+    ├── lib/         # vault, tokens, …; mockData/ + note-filters/ (src + *.test.js)
     └── components/
         ├── atoms/       # proxies → remote dimui
-        ├── molecules/   # note-item, confirm-dialog, …
+        ├── molecules/   # note-item/ (component + *.test.js), confirm-dialog, …
         ├── organisms/   # list, editor, shell, unlock
         ├── templates/   # notes-layout
-        └── pages/       # notes-app (password gate)
+        └── pages/       # notes-app/ (page + *.test.js)
 ```
 
-Start at [`notes/components/pages/notes-app.js`](./notes/components/pages/notes-app.js)
+Start at [`notes/components/pages/notes-app/notes-app.js`](./notes/components/pages/notes-app/notes-app.js)
 (unlock vs vault), then
 [`notes/components/organisms/notes-shell.js`](./notes/components/organisms/notes-shell.js)
 (encrypted `useStore` + folders). Folder rows and editors are local pure JS;
@@ -152,6 +153,52 @@ buttons/icons come through atom proxies.
 
 Runtimes: `?impl=js` or `?impl=wasm` (also in the header). Choice is stored in
 `localStorage`.
+
+## Application tests (uncompiled)
+
+The notes app stays plain classic scripts — no transpile for tests either.
+[`runTests.html`](./runTests.html) (next to `index.html`) loads the same Dim
+IIFE + `BP` notes modules as the app (without `app.js` / `pwa.js`), then runs
+[DimTest](https://github.com/positive-intentions/dim/tree/staging/examples/app-test)
+from the Dim CDN.
+
+```bash
+# From the repo root (HTTP required — dimui uses import())
+python3 -m http.server 4173
+# Open:
+#   http://127.0.0.1:4173/runTests.html
+#   http://127.0.0.1:4173/runTests.html?impl=wasm
+```
+
+Specs sit **next to the source** in that module’s folder (e.g.
+`notes/lib/note-filters/note-filters.test.js`,
+`notes/components/molecules/note-item/note-item.test.js`). They call
+`BP.require(...)` and `DimTest.mount(...)` against the real modules. The
+harness paints a pass/fail report and sets `window.__DIM_TEST__` for CI.
+
+**Runner chrome (owned by DimTest, not this page):** animated splash while
+booting, toolbar with **JS | WASM** (reloads `?impl=` like the app), **Rerun**
+(re-runs the suite without reloading Dim), and the results/coverage panel.
+
+**Harness (CDN, no copies in this repo):**
+
+- `https://positive-intentions.github.io/dim/lib/dim.test.global.js`
+- `https://positive-intentions.github.io/dim/lib/dim.cover.global.js`
+
+While iterating on the harness locally, point at a dim Pages tree with
+`?dimLib=http://127.0.0.1:8765/lib/` (serve `dim/Frontend`).
+
+**Live coverage:** `runTests.html` fetches each `notes/**/*.js` file, instruments
+executable lines in the browser with [Acorn](https://cdn.jsdelivr.net/npm/acorn/)
+(test-only — production sources on disk are never rewritten), and shows a
+Coverage block under the suite: overall %, per-file hit/total, and expandable
+uncovered line ranges. Dim, `runtime.js`, dimui, and `*.test.js` are excluded.
+
+**CI:** [`.github/workflows/test.yml`](./.github/workflows/test.yml) serves the
+repo and opens both `?impl=js` and `?impl=wasm` with Playwright. Playwright is
+installed only in the Action (`npx`) — there is still no app `package.json` or
+bundler. Live suite on Pages (after deploy):
+`/dim-boilerplate/runTests.html`.
 
 ## PWA / offline
 
@@ -210,6 +257,10 @@ Same files as on disk — Pages is just another host (including `sw.js`,
    `dimui/components/atoms/<name>`, plus a `<script>` in `index.html`.
 2. **App UI** — one `define()` per file under molecules / organisms / templates /
    pages; register with `BP.module("notes/components/...", deps, factory)`.
+   Prefer a folder per module when you add tests (same for `notes/lib/`):
+   `notes/components/molecules/foo/foo.js` + `foo.test.js` (BP id stays
+   `notes/components/molecules/foo`). Add the new script to `index.html` and
+   the instrument/test lists in `runTests.html`.
 3. Depend on local module ids (e.g. `notes/components/atoms/button`), not a
    grab-bag `"dimui"` name.
 

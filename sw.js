@@ -37,9 +37,9 @@
     "./notes/lib/vault.js",
     "./notes/lib/tokens.js",
     "./notes/lib/theme.js",
-    "./notes/lib/mockData.js",
+    "./notes/lib/mockData/mockData.js",
     "./notes/lib/sharedKeys.js",
-    "./notes/lib/note-filters.js",
+    "./notes/lib/note-filters/note-filters.js",
     "./notes/components/atoms/button.js",
     "./notes/components/atoms/icon.js",
     "./notes/components/atoms/icon-button.js",
@@ -52,7 +52,7 @@
     "./notes/components/molecules/folder-item.js",
     "./notes/components/molecules/mobile-folder-bar.js",
     "./notes/components/molecules/notes-header.js",
-    "./notes/components/molecules/note-item.js",
+    "./notes/components/molecules/note-item/note-item.js",
     "./notes/components/organisms/folder-rail.js",
     "./notes/components/organisms/unlock-screen.js",
     "./notes/components/organisms/note-list.js",
@@ -60,7 +60,7 @@
     "./notes/components/organisms/navigation-view.js",
     "./notes/components/organisms/notes-shell.js",
     "./notes/components/templates/notes-layout.js",
-    "./notes/components/pages/notes-app.js",
+    "./notes/components/pages/notes-app/notes-app.js",
   ];
 
   function toAbsolute(relative) {
