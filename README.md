@@ -177,19 +177,16 @@ Specs sit **next to the source** in that module’s folder (e.g.
 `BP.require(...)` and `DimTest.mount(...)` against the real modules. The
 harness paints a pass/fail report and sets `window.__DIM_TEST__` for CI.
 
-**Iframe e2e (same runner, no transpile):**
-[`notes/e2e/notes-app.e2e.test.js`](./notes/e2e/notes-app.e2e.test.js) uses
-`DimTest.open("./index.html")` to load the real production page in a
-same-origin iframe (fetch + `srcdoc` with isolation: IndexedDB name suffix,
-session-prefixed `localStorage`, service-worker register no-op). Specs under
-`notes/e2e/` (or registered with `DimTest.e2e`) run **after** unit tests. The
-report shows **Results → Coverage → E2E**, and the E2E block includes a **live
-preview** of the app under test (leave the iframe open so the last screen
-stays visible). The page driver pierces nested shadow roots (`click` / `fill` /
-`wait` / `text`). Coverage still comes only from parent-instrumented
-`notes/**` unit loads — iframe scripts stay production/uninstrumented. Until
-Pages ships `DimTest.open` / the E2E preview, point the harness at a local dim
-lib:
+**Iframe e2e (same runner, no transpile):** helpers in
+[`notes/e2e/helpers.js`](./notes/e2e/helpers.js) plus specs
+`notes-app` / `notes-crud` (edit note) / `notes-organize` / `app-shell` use
+`DimTest.open("./index.html")` (fetch + `srcdoc` with isolation: IndexedDB
+suffix, session `localStorage`, SW register no-op). Specs under `notes/e2e/`
+run **after** unit tests. Report layout: **Results → Coverage (unit lines) →
+E2E** (pass progress, e2e tree, **separate E2E line coverage** from
+instrumented `notes/**` inside the iframe, live preview). CI still requires
+**100% unit** coverage only; e2e coverage is logged informationally. Until
+Pages ships the harness, use a local dim lib:
 
 ```bash
 # Terminal A — dim Pages tree
@@ -216,10 +213,12 @@ While iterating on the harness locally, point at a dim Pages tree with
 **Live coverage:** `runTests.html` fetches each `notes/**/*.js` file, instruments
 executable lines in the browser with Dim’s first-party **DimParse** (embedded in
 `dim.cover.global.js` — no Acorn / jsDelivr; test-only — production sources on
-disk are never rewritten), and shows a Coverage block under the suite: overall %,
+disk are never rewritten), and shows a **Coverage** block (unit bucket): overall %,
 per-file hit/total, and expandable uncovered line ranges. Dim, `runtime.js`,
 dimui, and `*.test.js` are excluded. The suite aims for **100%** of those
 instrumented notes lines; CI fails `?impl=js` if any uncovered lines remain.
+E2E opens rewrite the same `notes/**` script tags into a second **e2e** cover
+bucket (shown under the E2E section); that % is not CI-gated.
 
 **CI:** [`.github/workflows/test.yml`](./.github/workflows/test.yml) serves the
 repo and opens both `?impl=js` and `?impl=wasm` with Playwright. Playwright is

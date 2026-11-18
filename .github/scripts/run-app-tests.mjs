@@ -88,7 +88,16 @@ async function runImpl(browser, impl) {
     impl === "js"
       ? await page.evaluate(() =>
           window.DimTest && DimTest.cover
-            ? DimTest.cover.summary()
+            ? DimTest.cover.summary({ bucket: "unit" })
+            : null,
+        )
+      : null;
+
+  const coverE2e =
+    impl === "js"
+      ? await page.evaluate(() =>
+          window.DimTest && DimTest.cover
+            ? DimTest.cover.summary({ bucket: "e2e" })
             : null,
         )
       : null;
@@ -101,8 +110,16 @@ async function runImpl(browser, impl) {
     `[${impl}] ${summary.passed} passed, ${summary.failed} failed (of ${summary.results.length})`,
   );
   for (const r of summary.results) {
-    console.log(`  ${r.ok ? "PASS" : "FAIL"} ${r.name}`);
+    console.log(
+      `  ${r.ok ? "PASS" : "FAIL"} [${r.kind || "?"}] ${r.name}`,
+    );
     if (!r.ok && r.error) console.log(`    ${r.error.split("\n")[0]}`);
+  }
+
+  if (coverE2e && coverE2e.total) {
+    console.log(
+      `[${impl}] e2e coverage ${coverE2e.pct}% · ${coverE2e.hit} / ${coverE2e.total} (informational)`,
+    );
   }
 
   await page.close();
