@@ -18,11 +18,53 @@
     );
   }
 
+  function sleep(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  async function waitFor(fn, label, timeoutMs) {
+    var timeout = timeoutMs || 5000;
+    var start = Date.now();
+    while (Date.now() - start < timeout) {
+      var value = fn();
+      if (value) return value;
+      await sleep(50);
+    }
+    throw new Error("timeout waiting for " + (label || "condition"));
+  }
+
   function clickHost(host) {
     if (!host) return;
     var btn =
       (host.shadowRoot && host.shadowRoot.querySelector("button")) || host;
     btn.click();
+  }
+
+  function clickConfirmByLabel(dialog, labelRe) {
+    var buttons = dialog.shadowRoot.querySelectorAll("dimui-button");
+    for (var i = 0; i < buttons.length; i++) {
+      var text =
+        (buttons[i].shadowRoot && buttons[i].shadowRoot.textContent) ||
+        buttons[i].textContent ||
+        "";
+      if (labelRe.test(String(text).replace(/\s+/g, " ").trim())) {
+        clickHost(buttons[i]);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function waitOpenDialog(el) {
+    return waitFor(function () {
+      var dialog = el.shadowRoot && el.shadowRoot.querySelector("dimui-confirm-dialog");
+      if (!dialog || !dialog.shadowRoot) return null;
+      var root = dialog.shadowRoot.querySelector(".confirm-dialog");
+      if (!root || root.hasAttribute("hidden")) return null;
+      return dialog;
+    }, "open confirm dialog");
   }
 
   test("note-editor empty state", async function () {
@@ -87,11 +129,11 @@
     clickHost(icons[1]);
     expect(pinned).toBe("n1");
     clickHost(icons[2]);
-    await el.updateComplete;
-    var dialog = el.shadowRoot.querySelector("dimui-confirm-dialog");
-    expect(dialog).toBeTruthy();
-    var confirmBtns = dialog.shadowRoot.querySelectorAll("dimui-button");
-    clickHost(confirmBtns[1]);
+    var dialog = await waitOpenDialog(el);
+    expect(clickConfirmByLabel(dialog, /Move to Trash/i)).toBeTruthy();
+    await waitFor(function () {
+      return trashed;
+    }, "trashed id");
     expect(trashed).toBe("n1");
   });
 
@@ -116,16 +158,16 @@
 
     var danger = el.shadowRoot.querySelector("dimui-button");
     clickHost(danger);
+    var dialog = await waitOpenDialog(el);
+    expect(clickConfirmByLabel(dialog, /Cancel/i)).toBeTruthy();
     await el.updateComplete;
-    var dialog = el.shadowRoot.querySelector("dimui-confirm-dialog");
-    var confirmBtns = dialog.shadowRoot.querySelectorAll("dimui-button");
-    clickHost(confirmBtns[0]);
-    await el.updateComplete;
+
     clickHost(danger);
-    await el.updateComplete;
-    dialog = el.shadowRoot.querySelector("dimui-confirm-dialog");
-    confirmBtns = dialog.shadowRoot.querySelectorAll("dimui-button");
-    clickHost(confirmBtns[1]);
+    dialog = await waitOpenDialog(el);
+    expect(clickConfirmByLabel(dialog, /Delete Forever/i)).toBeTruthy();
+    await waitFor(function () {
+      return deleted;
+    }, "deleted id");
     expect(deleted).toBe("n1");
   });
 })();

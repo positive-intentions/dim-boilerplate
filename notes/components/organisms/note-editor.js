@@ -147,7 +147,13 @@ BP.module(
       tag: "dimui-note-editor",
       component: (
         props,
-        { html: tpl, useState: state, useStyle: style, useScope: scope },
+        {
+          html: tpl,
+          useState: state,
+          useRef: ref,
+          useStyle: style,
+          useScope: scope,
+        },
       ) => {
         style(styles);
         scope({ Button, IconButton, EmptyState, ConfirmDialog });
@@ -178,6 +184,9 @@ BP.module(
             : () => {};
 
         const [confirm, setConfirm] = state(null);
+        // Keep kind on a ref so a stale nested .props onConfirm (WASM) still
+        // dispatches the correct trash/delete action.
+        const confirmRef = ref(null);
 
         if (!note) {
           return tpl`
@@ -200,12 +209,19 @@ BP.module(
             updatedAt: new Date().toISOString(),
           });
 
-        const askConfirm = (kind) => setConfirm(kind);
-        const closeConfirm = () => setConfirm(null);
+        const askConfirm = (kind) => {
+          confirmRef.current = kind;
+          setConfirm(kind);
+        };
+        const closeConfirm = () => {
+          confirmRef.current = null;
+          setConfirm(null);
+        };
 
         const runConfirm = () => {
-          if (confirm === "trash") onTrash(note.id);
-          if (confirm === "delete") onDeleteForever(note.id);
+          const kind = confirmRef.current || confirm;
+          if (kind === "trash") onTrash(note.id);
+          if (kind === "delete") onDeleteForever(note.id);
           closeConfirm();
         };
 

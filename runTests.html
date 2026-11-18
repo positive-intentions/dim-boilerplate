@@ -52,6 +52,124 @@
         } catch (e) {}
         document.documentElement.dataset.dimRuntime = impl;
 
+        // Isolate DimTest from the live app vault on the same origin:
+        // Dim always opens IndexedDB "DimDatabase"; redirect to a per-run/test name.
+        var VAULT_FLAG = "dimui-vault";
+        var LIVE_DB = "DimDatabase";
+        var testRunId =
+          Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+        var testDbSeq = 0;
+        var originalIdbOpen = indexedDB.open.bind(indexedDB);
+        // Expose for verification / debugging without hitting the redirect.
+        globalThis.__DIM_ORIG_IDB_OPEN__ = originalIdbOpen;
+        indexedDB.open = function (name, version) {
+          var next = name;
+          if (name === LIVE_DB) {
+            next = LIVE_DB + "_test_" + testRunId + "_" + testDbSeq;
+          }
+          return originalIdbOpen(next, version);
+        };
+
+        function snapshotVaultFlag() {
+          try {
+            return {
+              has: localStorage.getItem(VAULT_FLAG) !== null,
+              value: localStorage.getItem(VAULT_FLAG),
+            };
+          } catch (e) {
+            return { has: false, value: null };
+          }
+        }
+
+        function restoreVaultFlag(snap) {
+          try {
+            if (!snap || !snap.has) {
+              localStorage.removeItem(VAULT_FLAG);
+            } else {
+              localStorage.setItem(VAULT_FLAG, snap.value);
+            }
+          } catch (e) {}
+        }
+
+        function sleep(ms) {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+          });
+        }
+
+        function withVaultIsolation(runFn) {
+          var snap = snapshotVaultFlag();
+          return Promise.resolve()
+            .then(function () {
+              return runFn();
+            })
+            .then(
+              function (result) {
+                restoreVaultFlag(snap);
+                return result;
+              },
+              function (err) {
+                restoreVaultFlag(snap);
+                throw err;
+              },
+            );
+        }
+
+        function installTestIsolation() {
+          var origTest = DimTest.test;
+          // Per-test DB seq + drain orphan useStore persists so the next test's
+          // encryption key does not receive "vault"/"notes"/"folders" events
+          // encrypted with the previous password (shared window event names).
+          DimTest.test = function (name, fn) {
+            return origTest(name, function () {
+              testDbSeq += 1;
+              var self = this;
+              var args = arguments;
+              function drain(result, isError) {
+                // useStore persist is 300ms + CustomEvent debounce 200ms + IDB.
+                // Let the current key's listeners consume those events first,
+                // then unmount so the next test's password never decrypts them.
+                return sleep(600)
+                  .then(function () {
+                    if (DimTest.clearFixture) DimTest.clearFixture();
+                    return sleep(300);
+                  })
+                  .then(function () {
+                    if (isError) throw result;
+                    return result;
+                  });
+              }
+              return Promise.resolve()
+                .then(function () {
+                  return fn.apply(self, args);
+                })
+                .then(
+                  function (result) {
+                    return drain(result, false);
+                  },
+                  function (err) {
+                    return drain(err, true);
+                  },
+                );
+            });
+          };
+
+          var origRun = DimTest.run.bind(DimTest);
+          DimTest.run = function () {
+            return withVaultIsolation(origRun);
+          };
+
+          var origRerun = DimTest.rerun.bind(DimTest);
+          DimTest.rerun = function () {
+            testRunId =
+              Date.now().toString(36) +
+              "_" +
+              Math.random().toString(36).slice(2, 8);
+            testDbSeq = 0;
+            return withVaultIsolation(origRerun);
+          };
+        }
+
         var dimSrc =
           impl === "wasm"
             ? dimLib + "dim.wasm.global.js"
@@ -186,6 +304,7 @@
               if (!globalThis.DimTest) {
                 throw new Error("DimTest global missing");
               }
+              installTestIsolation();
               DimTest.splash("Loading Dim (" + impl + ")…");
               return loadScriptChain(
                 [dimSrc, "./runtime.js", dimLib + "dim.cover.global.js"],
