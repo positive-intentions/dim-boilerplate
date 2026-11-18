@@ -16,7 +16,7 @@
     <!--
       HTTP-only test runner next to index.html (dimui uses import()).
       DimTest CDN loads first for splash + toolbar; then Dim / runtime /
-      Acorn / cover; notes/** are fetched + instrumented in-page.
+      cover (embeds DimParse); notes/** are fetched + instrumented in-page.
       Production notes/ files on disk are never rewritten.
       Same ?impl=js|wasm as the app (toolbar reloads).
     -->
@@ -28,8 +28,6 @@
       (function () {
         var STORAGE_KEY = "dim-boilerplate-impl";
         var CDN_DIM_LIB = "https://positive-intentions.github.io/dim/lib/";
-        var ACORN_CDN =
-          "https://cdn.jsdelivr.net/npm/acorn@8.14.1/dist/acorn.min.js";
         var impl = "js";
         var dimLib = CDN_DIM_LIB;
         try {
@@ -175,7 +173,7 @@
               }
               DimTest.splash("Loading Dim (" + impl + ")…");
               return loadScriptChain(
-                [dimSrc, "./runtime.js", ACORN_CDN, dimLib + "dim.cover.global.js"],
+                [dimSrc, "./runtime.js", dimLib + "dim.cover.global.js"],
                 0,
               );
             })
@@ -188,11 +186,13 @@
                   "DimTest.instrument missing — need dim.cover.global.js on the Dim CDN",
                 );
               }
+              if (!globalThis.DimParse || !globalThis.DimParse.parse) {
+                throw new Error(
+                  "DimParse missing — need a dim.cover.global.js that embeds DimParse (rebuild Pages lib or ?dimLib=)",
+                );
+              }
               if (!globalThis.BP) {
                 throw new Error("BP runtime missing");
-              }
-              if (typeof acorn === "undefined") {
-                throw new Error("acorn global missing");
               }
               DimTest.splash("Instrumenting notes…");
               return loadInstrumentedNotes(0);

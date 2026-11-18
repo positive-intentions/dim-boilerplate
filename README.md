@@ -189,10 +189,11 @@ While iterating on the harness locally, point at a dim Pages tree with
 `?dimLib=http://127.0.0.1:8765/lib/` (serve `dim/Frontend`).
 
 **Live coverage:** `runTests.html` fetches each `notes/**/*.js` file, instruments
-executable lines in the browser with [Acorn](https://cdn.jsdelivr.net/npm/acorn/)
-(test-only — production sources on disk are never rewritten), and shows a
-Coverage block under the suite: overall %, per-file hit/total, and expandable
-uncovered line ranges. Dim, `runtime.js`, dimui, and `*.test.js` are excluded.
+executable lines in the browser with Dim’s first-party **DimParse** (embedded in
+`dim.cover.global.js` — no Acorn / jsDelivr; test-only — production sources on
+disk are never rewritten), and shows a Coverage block under the suite: overall %,
+per-file hit/total, and expandable uncovered line ranges. Dim, `runtime.js`,
+dimui, and `*.test.js` are excluded.
 
 **CI:** [`.github/workflows/test.yml`](./.github/workflows/test.yml) serves the
 repo and opens both `?impl=js` and `?impl=wasm` with Playwright. Playwright is
