@@ -73,7 +73,17 @@ BP.module(
         if (!password) {
           return tpl`
             <dimui-unlock
-              .props="${{ onUnlock: unlockVault, error, theme: themeValue }}"
+              .props="${{
+                title: "Notes",
+                unlockHint:
+                  "Enter your password to decrypt notes stored in this browser.",
+                createHint:
+                  "Choose a password to encrypt your notes. There is no recovery if you forget it.",
+                vaultFlag: "dimui-vault",
+                onUnlock: unlockVault,
+                error,
+                theme: themeValue,
+              }}"
             />
           `;
         }

@@ -1,8 +1,10 @@
-BP.module("notes/lib/sharedKeys", [], function () {
-  const sharedKeys = (id) => ({
-    title: `note-title-${id}`,
-    snippet: `note-snippet-${id}`,
-    time: `note-time-${id}`,
-  });
-  return { sharedKeys };
-});
+/**
+ * Proxy for remote dimui module dimui/lib/notes/sharedKeys
+ */
+BP.module(
+  "notes/lib/sharedKeys",
+  ["dimui/lib/notes/sharedKeys"],
+  function (mod) {
+    return mod;
+  },
+);

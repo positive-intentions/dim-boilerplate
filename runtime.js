@@ -22,6 +22,18 @@
     navigator.serviceWorker.controller;
   var DIMUI_SRC = controlled ? "./pwa/cdn/dimui/src/" : CDN_DIMUI_SRC;
   var DIM_LIB = controlled ? "./pwa/cdn/dim/lib/" : CDN_DIM_LIB;
+  // Srcdoc e2e iframes (about:srcdoc) have no query string — inherit from parent.
+  try {
+    if (window.parent && window.parent !== window) {
+      var parentBp = window.parent.__DIM_BOILERPLATE__;
+      if (parentBp && parentBp.dimuiSrc) {
+        DIMUI_SRC = parentBp.dimuiSrc;
+      }
+      if (parentBp && parentBp.dimLib) {
+        DIM_LIB = parentBp.dimLib;
+      }
+    }
+  } catch (eParent) {}
   // Query overrides win (local dimui while developing): ?dimuiSrc=http://127.0.0.1:5173/src/
   try {
     var params = new URLSearchParams(location.search || "");

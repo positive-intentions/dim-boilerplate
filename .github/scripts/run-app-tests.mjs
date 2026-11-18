@@ -10,6 +10,10 @@
  *   http://127.0.0.1:8765/lib/
  * forwarded as ?dimLib= (needed until Pages ships DimParse-in-cover).
  *
+ * Optional DIMUI_SRC — absolute dimui src URL with trailing slash, e.g.
+ *   http://127.0.0.1:5173/src/
+ * forwarded as ?dimuiSrc= (local unpublished kits before Pages deploy).
+ *
  * Playwright is resolved from node_modules, or from NODE_PATH (CI installs
  * into a throwaway directory so this repo stays package.json-free).
  */
@@ -32,11 +36,13 @@ const { chromium } = await loadPlaywright();
 const BASE = process.env.BASE_URL || "http://127.0.0.1:4173";
 const TIMEOUT_MS = Number(process.env.DIM_TEST_TIMEOUT_MS || 180000);
 const DIM_LIB = (process.env.DIM_LIB || "").trim();
+const DIMUI_SRC = (process.env.DIMUI_SRC || "").trim();
 
 function buildUrl(impl) {
   const u = new URL(`${BASE}/runTests.html`);
   u.searchParams.set("impl", impl);
   if (DIM_LIB) u.searchParams.set("dimLib", DIM_LIB);
+  if (DIMUI_SRC) u.searchParams.set("dimuiSrc", DIMUI_SRC);
   return u.toString();
 }
 
@@ -80,6 +86,7 @@ async function runImpl(browser, impl) {
         const s = window.__DIM_TEST__;
         return s && s.done ? s : null;
       },
+      undefined,
       { timeout: TIMEOUT_MS },
     )
     .then((h) => h.jsonValue());

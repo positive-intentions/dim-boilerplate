@@ -1,5 +1,10 @@
-BP.module("notes/lib/vault", [], function () {
-  const VAULT_FLAG = "dimui-vault";
-  const VAULT_SENTINEL = "dimui";
-  return { VAULT_FLAG, VAULT_SENTINEL };
-});
+/**
+ * Proxy for remote dimui module dimui/lib/notes/vault
+ */
+BP.module(
+  "notes/lib/vault",
+  ["dimui/lib/notes/vault"],
+  function (mod) {
+    return mod;
+  },
+);
