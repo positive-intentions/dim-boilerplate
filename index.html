@@ -23,7 +23,7 @@
     <!--
       Inline classic script so document.write runs while the parser is open.
       That sync-loads the Dim IIFE from GitHub Pages before runtime.js / notes / app.js.
-      Classic https:// scripts work from file://; dimui atoms use ESM import() instead.
+      Classic https:// scripts work from file://; dimui atoms load as classic scripts too.
       When a service worker already controls the page, Dim is loaded via the
       same-scope ./pwa/cdn/ proxy so the worker can serve it offline.
     -->

@@ -2,16 +2,14 @@
  * Runs after the inline index.html script has sync-loaded window.Dim
  * from https://positive-intentions.github.io/dim/lib/dim*.global.js.
  *
- * 1. Installs an import map so remote dimui ESM resolves
- *    `@positive-intentions/dim` to a data: shim over globalThis.Dim.
- * 2. Exposes globalThis.BP — a tiny AMD-style module registry used by the
- *    local classic-script notes components (local ES modules are blocked on
- *    file:// in Chrome).
+ * Exposes globalThis.BP — a tiny AMD-style module registry used by the
+ * local classic-script notes components (local ES modules are blocked on
+ * file:// in Chrome).
  *
- * Remote atoms / theme load via absolute https:// import() when a BP dep
- * starts with "dimui/" (e.g. "dimui/components/atoms/button").
- * Dim itself is a classic remote IIFE (not import()) so window.Dim exists
- * before this shim is built.
+ * Remote dimui modules load as classic scripts via <script src> when a BP
+ * dep starts with "dimui/" (e.g. "dimui/components/atoms/button"). Those
+ * scripts call BP.module into this page's registry. Dim itself is a classic
+ * remote IIFE (not import()) so window.Dim exists before this shim is built.
  */
 (function () {
   var CDN_DIMUI_SRC = "https://positive-intentions.github.io/dimui/src/";
@@ -24,6 +22,22 @@
     navigator.serviceWorker.controller;
   var DIMUI_SRC = controlled ? "./pwa/cdn/dimui/src/" : CDN_DIMUI_SRC;
   var DIM_LIB = controlled ? "./pwa/cdn/dim/lib/" : CDN_DIM_LIB;
+  // Query overrides win (local dimui while developing): ?dimuiSrc=http://127.0.0.1:5173/src/
+  try {
+    var params = new URLSearchParams(location.search || "");
+    var dimuiSrcQ = params.get("dimuiSrc") || "";
+    if (dimuiSrcQ) {
+      DIMUI_SRC =
+        dimuiSrcQ.charAt(dimuiSrcQ.length - 1) === "/"
+          ? dimuiSrcQ
+          : dimuiSrcQ + "/";
+    }
+    var dimLibQ = params.get("dimLib") || "";
+    if (dimLibQ) {
+      DIM_LIB =
+        dimLibQ.charAt(dimLibQ.length - 1) === "/" ? dimLibQ : dimLibQ + "/";
+    }
+  } catch (e) {}
 
   if (!globalThis.Dim) {
     throw new Error(
@@ -31,26 +45,6 @@
         CDN_DIM_LIB +
         "dim.global.js (or dim.wasm.global.js).",
     );
-  }
-
-  var keys = Object.keys(globalThis.Dim).join(",");
-  var shim = "const D=globalThis.Dim;export const{" + keys + "}=D;";
-  var map = {
-    imports: {
-      "@positive-intentions/dim":
-        "data:text/javascript," + encodeURIComponent(shim),
-      "dimui/": DIMUI_SRC,
-    },
-  };
-
-  var importMap = document.createElement("script");
-  importMap.type = "importmap";
-  importMap.textContent = JSON.stringify(map);
-  var scriptEl = document.currentScript;
-  if (scriptEl && scriptEl.parentNode) {
-    scriptEl.after(importMap);
-  } else {
-    (document.head || document.documentElement).appendChild(importMap);
   }
 
   globalThis.__DIM_BOILERPLATE__ = {
@@ -66,54 +60,71 @@
 
   var registry = Object.create(null);
   var cache = Object.create(null);
+  var loading = Object.create(null);
 
-  function loadDimuiRemote(name) {
+  function scriptUrlForDimui(name) {
     // "dimui/theme" → theme.js
     // "dimui/components/atoms/button" → components/atoms/button.js
     var path = name.slice("dimui/".length);
-    if (!path) {
+    if (!path) return null;
+    return DIMUI_SRC + path + ".js";
+  }
+
+  function loadScript(url) {
+    if (loading[url]) return loading[url];
+    loading[url] = new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = url;
+      s.async = false;
+      s.onload = function () {
+        resolve();
+      };
+      s.onerror = function () {
+        delete loading[url];
+        reject(new Error("Failed to load script " + url));
+      };
+      (document.head || document.documentElement).appendChild(s);
+    });
+    return loading[url];
+  }
+
+  function ensureRegistered(name) {
+    if (registry[name]) return Promise.resolve();
+    if (name.indexOf("dimui/") !== 0) {
+      return Promise.reject(
+        new Error('BP module "' + name + '" is not registered'),
+      );
+    }
+    var url = scriptUrlForDimui(name);
+    if (!url) {
       return Promise.reject(new Error('Invalid dimui module id "' + name + '"'));
     }
-    var url = DIMUI_SRC + path + ".js";
-    return import(url).catch(function (err) {
-      return Promise.reject(
-        new Error(
-          "Failed to load " +
+    return loadScript(url).then(function () {
+      if (!registry[name]) {
+        throw new Error(
+          'Script loaded for "' +
             name +
-            " from " +
+            '" from ' +
             url +
-            "\n" +
-            (err && err.message ? err.message : String(err)),
-        ),
-      );
+            " but BP.module was not called",
+        );
+      }
     });
   }
 
   function resolve(name) {
     if (cache[name]) return cache[name];
 
-    if (name.indexOf("dimui/") === 0) {
-      cache[name] = loadDimuiRemote(name).catch(function (err) {
-        delete cache[name];
-        return Promise.reject(err);
-      });
-      return cache[name];
-    }
-
-    var entry = registry[name];
-    if (!entry) {
-      return Promise.reject(
-        new Error('BP module "' + name + '" is not registered'),
-      );
-    }
-
-    cache[name] = Promise.all(
-      entry.deps.map(function (dep) {
-        return resolve(dep);
-      }),
-    )
-      .then(function (args) {
-        return entry.factory.apply(null, args);
+    cache[name] = ensureRegistered(name)
+      .then(function () {
+        var entry = registry[name];
+        return Promise.all(
+          entry.deps.map(function (dep) {
+            return resolve(dep);
+          }),
+        ).then(function (args) {
+          return entry.factory.apply(null, args);
+        });
       })
       .catch(function (err) {
         delete cache[name];
@@ -145,6 +156,11 @@
     /** @param {string} name @returns {Promise<any>} */
     require: function (name) {
       return resolve(name);
+    },
+
+    /** @param {string} name @returns {boolean} */
+    has: function (name) {
+      return Boolean(registry[name]);
     },
   };
 })();

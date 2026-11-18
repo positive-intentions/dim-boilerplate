@@ -108,9 +108,9 @@ flowchart TD
 
 1. `index.html` sync-loads Dim from
    `https://positive-intentions.github.io/dim/lib/` (JS or WASM via `?impl=`).
-2. [`runtime.js`](./runtime.js) adds an import map so remote dimui ESM can use
-   `@positive-intentions/dim` against `globalThis.Dim`, and exposes
-   `globalThis.BP` for local classic scripts (`file://` cannot use local ESM).
+2. [`runtime.js`](./runtime.js) exposes `globalThis.BP` for local classic
+   scripts and loads remote dimui modules as classic `<script src>` files
+   (they call `BP.module` into this page). Dim APIs come from `window.Dim`.
 3. Each file under `notes/` calls `BP.module(...)`.
 4. [`app.js`](./app.js) does `BP.require("notes/components/pages/notes-app")`
    and renders the notes UI.
@@ -121,7 +121,7 @@ flowchart TD
 dim-boilerplate/
 ├── index.html              # loads Dim + all classic scripts + PWA meta
 ├── runTests.html           # DimTest runner + live coverage (no tests/ folder)
-├── runtime.js              # import map + BP + dimui/* resolver
+├── runtime.js              # BP registry + dimui/* classic script loader
 ├── app.js                  # host chrome (JS/WASM + theme toggles)
 ├── pwa.js                  # SW register + CDN harvest + install prompt API
 ├── sw.js                   # precache + stale-while-revalidate + CDN proxy
@@ -163,7 +163,7 @@ IIFE + `BP` notes modules as the app (without `app.js` / `pwa.js`), then runs
 from the Dim CDN.
 
 ```bash
-# From the repo root (HTTP required — dimui uses import())
+# From the repo root (HTTP required for classic dimui script loads)
 python3 -m http.server 4173
 # Open:
 #   http://127.0.0.1:4173/runTests.html
