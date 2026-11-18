@@ -193,13 +193,15 @@ executable lines in the browser with Dim’s first-party **DimParse** (embedded 
 `dim.cover.global.js` — no Acorn / jsDelivr; test-only — production sources on
 disk are never rewritten), and shows a Coverage block under the suite: overall %,
 per-file hit/total, and expandable uncovered line ranges. Dim, `runtime.js`,
-dimui, and `*.test.js` are excluded.
+dimui, and `*.test.js` are excluded. The suite aims for **100%** of those
+instrumented notes lines; CI fails `?impl=js` if any uncovered lines remain.
 
 **CI:** [`.github/workflows/test.yml`](./.github/workflows/test.yml) serves the
 repo and opens both `?impl=js` and `?impl=wasm` with Playwright. Playwright is
 installed only in the Action (`npx`) — there is still no app `package.json` or
-bundler. Live suite on Pages (after deploy):
-`/dim-boilerplate/runTests.html`.
+bundler. Optional `DIM_LIB` env (see `.github/scripts/run-app-tests.mjs`) points
+at a local dim `Frontend/lib/` while iterating on DimParse/cover. Live suite on
+Pages (after deploy): `/dim-boilerplate/runTests.html`.
 
 ## PWA / offline
 

@@ -45,4 +45,22 @@
     btn.click();
     expect(selectedId).toBe("note-42");
   });
+
+  test("note-item pinned selected shareTransition untitled", async function () {
+    await BP.require("notes/components/molecules/note-item");
+    var el = await mount("dimui-note-item", {
+      note: {
+        id: "note-p",
+        title: "  ",
+        body: "",
+        updatedAt: new Date().toISOString(),
+        pinned: true,
+      },
+      selected: true,
+      shareTransition: true,
+    });
+    expect(shadowText(el)).toContain("Untitled");
+    expect(el.shadowRoot.querySelector(".pin-mark")).toBeTruthy();
+    expect(el.shadowRoot.querySelector(".note-row.active")).toBeTruthy();
+  });
 })();

@@ -58,5 +58,25 @@
     expect(
       filters.folderLabelFor("f1", [{ id: "f1", name: "Personal" }]),
     ).toBe("Personal");
+    expect(filters.folderLabelFor("missing", [])).toBe("Notes");
+  });
+
+  test("filterNotes: non-array notes yields empty", async function () {
+    var filters = await BP.require("notes/lib/note-filters");
+    var mock = await BP.require("notes/lib/mockData");
+    expect(filters.filterNotes(null, mock.SMART_FOLDERS.all)).toEqual([]);
+    expect(filters.filterNotes(undefined, mock.SMART_FOLDERS.pinned)).toEqual(
+      [],
+    );
+  });
+
+  test("computeViewId: list and note paths", async function () {
+    var filters = await BP.require("notes/lib/note-filters");
+    expect(filters.computeViewId([])).toBe(filters.LIST_VIEW_ID);
+    expect(filters.computeViewId(["list"])).toBe(filters.LIST_VIEW_ID);
+    expect(filters.computeViewId(["list", "note:12"])).toBe("212");
+    var hashed = filters.computeViewId(["list", "note:abc"]);
+    expect(Number(hashed)).toBeGreaterThan(250);
+    expect(String(hashed)).toBeTruthy();
   });
 })();

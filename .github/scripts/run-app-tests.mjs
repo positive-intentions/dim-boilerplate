@@ -3,6 +3,12 @@
  *
  * Expects a static server at BASE_URL (default http://127.0.0.1:4173).
  * Opens ?impl=js and ?impl=wasm; fails if window.__DIM_TEST__.failed > 0.
+ * On js, also requires DimTest.cover.summary() to report 100% of instrumented
+ * notes lines (zero uncovered).
+ *
+ * Optional DIM_LIB — absolute lib URL with trailing slash, e.g.
+ *   http://127.0.0.1:8765/lib/
+ * forwarded as ?dimLib= (needed until Pages ships DimParse-in-cover).
  *
  * Playwright is resolved from node_modules, or from NODE_PATH (CI installs
  * into a throwaway directory so this repo stays package.json-free).
@@ -24,10 +30,38 @@ async function loadPlaywright() {
 const { chromium } = await loadPlaywright();
 
 const BASE = process.env.BASE_URL || "http://127.0.0.1:4173";
-const TIMEOUT_MS = Number(process.env.DIM_TEST_TIMEOUT_MS || 120000);
+const TIMEOUT_MS = Number(process.env.DIM_TEST_TIMEOUT_MS || 180000);
+const DIM_LIB = (process.env.DIM_LIB || "").trim();
+
+function buildUrl(impl) {
+  const u = new URL(`${BASE}/runTests.html`);
+  u.searchParams.set("impl", impl);
+  if (DIM_LIB) u.searchParams.set("dimLib", DIM_LIB);
+  return u.toString();
+}
+
+function assertFullCoverage(cover, impl) {
+  if (!cover || !cover.files) {
+    throw new Error(`${impl}: DimTest.cover.summary() missing`);
+  }
+  console.log(
+    `[${impl}] coverage ${cover.pct}% · ${cover.hit} / ${cover.total}`,
+  );
+  const gaps = cover.files.filter((f) => f.uncovered && f.uncovered.length);
+  if (gaps.length || cover.pct !== 100 || cover.hit !== cover.total) {
+    for (const f of gaps) {
+      console.error(
+        `  UNCOVERED ${f.path} ${f.hit}/${f.total}: ${f.uncovered.join(",")}`,
+      );
+    }
+    throw new Error(
+      `${impl}: notes coverage not 100% (${cover.hit}/${cover.total})`,
+    );
+  }
+}
 
 async function runImpl(browser, impl) {
-  const url = `${BASE}/runTests.html?impl=${impl}`;
+  const url = buildUrl(impl);
   const page = await browser.newPage();
   const pageErrors = [];
   page.on("pageerror", (err) => pageErrors.push(String(err)));
@@ -50,6 +84,15 @@ async function runImpl(browser, impl) {
     )
     .then((h) => h.jsonValue());
 
+  const cover =
+    impl === "js"
+      ? await page.evaluate(() =>
+          window.DimTest && DimTest.cover
+            ? DimTest.cover.summary()
+            : null,
+        )
+      : null;
+
   if (pageErrors.length) {
     console.error(`Page errors (${impl}):`, pageErrors);
   }
@@ -69,6 +112,9 @@ async function runImpl(browser, impl) {
   }
   if (summary.failed > 0) {
     throw new Error(`${impl}: ${summary.failed} test(s) failed`);
+  }
+  if (impl === "js") {
+    assertFullCoverage(cover, impl);
   }
   return summary;
 }
