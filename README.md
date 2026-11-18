@@ -130,6 +130,7 @@ dim-boilerplate/
 ├── icons/                  # 192 / 512 / maskable / SVG PWA icons
 ├── screenshots/            # narrow + wide images for richer install UI
 └── notes/
+    ├── e2e/         # iframe AUT specs (DimTest.open → index.html)
     ├── lib/         # vault, tokens, …; mockData/ + note-filters/ (src + *.test.js)
     └── components/
         ├── atoms/       # proxies → remote dimui
@@ -175,6 +176,25 @@ Specs sit **next to the source** in that module’s folder (e.g.
 `notes/components/molecules/note-item/note-item.test.js`). They call
 `BP.require(...)` and `DimTest.mount(...)` against the real modules. The
 harness paints a pass/fail report and sets `window.__DIM_TEST__` for CI.
+
+**Iframe e2e (same runner, no transpile):**
+[`notes/e2e/notes-app.e2e.test.js`](./notes/e2e/notes-app.e2e.test.js) uses
+`DimTest.open("./index.html")` to load the real production page in a
+same-origin iframe (fetch + `srcdoc` with isolation: IndexedDB name suffix,
+session-prefixed `localStorage`, service-worker register no-op). The page
+driver pierces nested shadow roots (`click` / `fill` / `wait` / `text`).
+Coverage still comes only from parent-instrumented `notes/**` unit loads —
+iframe scripts stay production/uninstrumented. Until Pages ships
+`DimTest.open`, point the harness at a local dim lib:
+
+```bash
+# Terminal A — dim Pages tree
+python3 -m http.server 8765 --directory /path/to/dim/Frontend
+# Terminal B — this app
+python3 -m http.server 4173
+# Open:
+#   http://127.0.0.1:4173/runTests.html?dimLib=http://127.0.0.1:8765/lib/
+```
 
 **Runner chrome (owned by DimTest, not this page):** animated splash while
 booting, toolbar with **JS | WASM** (reloads `?impl=` like the app), **Rerun**
