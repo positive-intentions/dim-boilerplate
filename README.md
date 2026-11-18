@@ -181,11 +181,15 @@ harness paints a pass/fail report and sets `window.__DIM_TEST__` for CI.
 [`notes/e2e/notes-app.e2e.test.js`](./notes/e2e/notes-app.e2e.test.js) uses
 `DimTest.open("./index.html")` to load the real production page in a
 same-origin iframe (fetch + `srcdoc` with isolation: IndexedDB name suffix,
-session-prefixed `localStorage`, service-worker register no-op). The page
-driver pierces nested shadow roots (`click` / `fill` / `wait` / `text`).
-Coverage still comes only from parent-instrumented `notes/**` unit loads —
-iframe scripts stay production/uninstrumented. Until Pages ships
-`DimTest.open`, point the harness at a local dim lib:
+session-prefixed `localStorage`, service-worker register no-op). Specs under
+`notes/e2e/` (or registered with `DimTest.e2e`) run **after** unit tests. The
+report shows **Results → Coverage → E2E**, and the E2E block includes a **live
+preview** of the app under test (leave the iframe open so the last screen
+stays visible). The page driver pierces nested shadow roots (`click` / `fill` /
+`wait` / `text`). Coverage still comes only from parent-instrumented
+`notes/**` unit loads — iframe scripts stay production/uninstrumented. Until
+Pages ships `DimTest.open` / the E2E preview, point the harness at a local dim
+lib:
 
 ```bash
 # Terminal A — dim Pages tree
@@ -198,7 +202,8 @@ python3 -m http.server 4173
 
 **Runner chrome (owned by DimTest, not this page):** animated splash while
 booting, toolbar with **JS | WASM** (reloads `?impl=` like the app), **Rerun**
-(re-runs the suite without reloading Dim), and the results/coverage panel.
+(re-runs the suite without reloading Dim), and the results / coverage / E2E
+preview panel.
 
 **Harness (CDN, no copies in this repo):**
 
