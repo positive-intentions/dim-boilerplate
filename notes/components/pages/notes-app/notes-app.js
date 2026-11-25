@@ -3,15 +3,17 @@ BP.module(
   [
     "notes/lib/theme",
     "notes/lib/tokens",
+    "notes/lib/notes-app-logic",
     "notes/components/organisms/unlock-screen",
     "notes/components/organisms/notes-shell",
   ],
-  function (theme, tokens, unlock, shell) {
-    const { define, css } = Dim;
+  function (theme, tokens, logic, unlock, shell) {
+    const { define, css, t } = Dim;
     const { notesTokens } = tokens;
     const { UnlockScreen } = unlock;
     const { NotesShell } = shell;
     const { getStoredTheme, subscribeExplorerTheme } = theme;
+    const { notesAppReducer, notesAppViewModel } = logic;
 
     const styles = css`
       ${notesTokens}
@@ -25,6 +27,7 @@ BP.module(
 
     const NotesApp = define({
       tag: "dimui-notes-app",
+      inputs: t.record({}),
       component: (
         _,
         {
@@ -39,11 +42,14 @@ BP.module(
         style(styles);
         scope({ UnlockScreen, NotesShell });
 
-        const [password, setPassword] = state(null);
-        const [creating, setCreating] = state(false);
-        const [error, setError] = state("");
+        const [appState, setAppState] = state({
+          password: null,
+          creating: false,
+          error: "",
+        });
         const [themeValue, setTheme] = state(getStoredTheme());
         const hostRef = ref();
+        const vm = notesAppViewModel(appState);
 
         effect(() => subscribeExplorerTheme(setTheme), []);
 
@@ -53,24 +59,29 @@ BP.module(
         }, [themeValue]);
 
         const unlockVault = (value, { create }) => {
-          setError("");
-          setCreating(Boolean(create));
-          setPassword(value);
+          setAppState(
+            notesAppReducer(appState, {
+              type: "unlock",
+              password: value,
+              create: Boolean(create),
+            }),
+          );
         };
 
         const lock = () => {
-          setPassword(null);
-          setCreating(false);
-          setError("");
+          setAppState(notesAppReducer(appState, { type: "lock" }));
         };
 
         const unlockFailed = (message) => {
-          setPassword(null);
-          setCreating(false);
-          setError(message || "Wrong password.");
+          setAppState(
+            notesAppReducer(appState, {
+              type: "unlockFailed",
+              message: message || "Wrong password.",
+            }),
+          );
         };
 
-        if (!password) {
+        if (vm.locked) {
           return tpl`
             <dimui-unlock
               .props="${{
@@ -81,7 +92,7 @@ BP.module(
                   "Choose a password to encrypt your notes. There is no recovery if you forget it.",
                 vaultFlag: "dimui-vault",
                 onUnlock: unlockVault,
-                error,
+                error: appState.error,
                 theme: themeValue,
               }}"
             />
@@ -91,8 +102,8 @@ BP.module(
         return tpl`
           <dimui-notes-shell
             .props="${{
-              password,
-              create: creating,
+              password: appState.password,
+              create: appState.creating,
               onLock: lock,
               onUnlockFailed: unlockFailed,
               theme: themeValue,

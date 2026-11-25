@@ -14,9 +14,11 @@
       }
     </style>
     <!--
-      HTTP-only test runner next to index.html (dimui classic scripts + Dim CDN).
-      DimTest CDN loads first for splash + toolbar; then Dim / runtime /
-      cover (embeds DimParse); notes/** are fetched + instrumented in-page.
+      Test runner next to index.html (dimui classic scripts + Dim CDN / ?dimLib=).
+      DimTest loads first for splash + toolbar; then Dim / runtime /
+      cover (embeds DimParse) / verify. On http(s), notes/** are fetched +
+      instrumented. On file:// (e.g. ?dimLib=../dim/Frontend/lib/&dimuiSrc=../dimui/src/),
+      scripts load via <script src>; coverage is skipped when text cannot be read.
       Production notes/ files on disk are never rewritten.
       Same ?impl=js|wasm as the app (toolbar reloads).
     -->
@@ -181,7 +183,10 @@
           "./notes/lib/theme.js",
           "./notes/lib/mockData/mockData.js",
           "./notes/lib/sharedKeys.js",
+          "./notes/lib/types.js",
           "./notes/lib/note-filters/note-filters.js",
+          "./notes/lib/note-editor-logic.js",
+          "./notes/lib/notes-app-logic.js",
           "./notes/components/atoms/button.js",
           "./notes/components/atoms/icon.js",
           "./notes/components/atoms/icon-button.js",
@@ -261,6 +266,67 @@
           return String(src).replace(/^\.\//, "");
         }
 
+        var isFileProtocol =
+          typeof location !== "undefined" && location.protocol === "file:";
+        var coverSkippedNotified = false;
+
+        function absoluteUrl(src) {
+          try {
+            return new URL(src, location.href).href;
+          } catch (e) {
+            return src;
+          }
+        }
+
+        /** Try to read source text (HTTP / some file:// browsers). */
+        function readText(src) {
+          var url = absoluteUrl(src);
+          return fetch(url)
+            .then(function (res) {
+              if (!res.ok) {
+                throw new Error(
+                  "Failed to fetch " + src + " (" + res.status + ")",
+                );
+              }
+              return res.text();
+            })
+            .catch(function (fetchErr) {
+              return new Promise(function (resolve, reject) {
+                try {
+                  var xhr = new XMLHttpRequest();
+                  xhr.open("GET", url, true);
+                  xhr.onload = function () {
+                    if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
+                      resolve(xhr.responseText);
+                    } else {
+                      reject(fetchErr);
+                    }
+                  };
+                  xhr.onerror = function () {
+                    reject(fetchErr);
+                  };
+                  xhr.send();
+                } catch (e) {
+                  reject(fetchErr);
+                }
+              });
+            });
+        }
+
+        function maybeVerifyAdd(text, file) {
+          if (
+            text &&
+            globalThis.DimTest &&
+            DimTest.verify &&
+            DimTest.verify.add &&
+            /notes\/(types|note-filters|note-editor-logic|notes-app-logic)|note-item|confirm-dialog|note-editor|notes-app/.test(
+              file,
+            )
+          ) {
+            DimTest.verify.add(text, file);
+          }
+        }
+
         function injectInstrumented(source, file) {
           return new Promise(function (resolve, reject) {
             var s = document.createElement("script");
@@ -277,6 +343,34 @@
           });
         }
 
+        /**
+         * Load a notes source for execution (+ coverage/verify when text is readable).
+         * On file:// Chrome, fetch/XHR often fail: fall back to <script src> and
+         * soft-skip instrumentation so boot still succeeds.
+         */
+        function loadNotesSource(src, file) {
+          return readText(src)
+            .then(function (text) {
+              maybeVerifyAdd(text, file);
+              var instrumented = DimTest.instrument(text, file);
+              return injectInstrumented(instrumented, file);
+            })
+            .catch(function () {
+              if (!isFileProtocol) {
+                return Promise.reject(
+                  new Error("Failed to fetch " + src + " (and XHR fallback)"),
+                );
+              }
+              if (!coverSkippedNotified && DimTest.splash) {
+                coverSkippedNotified = true;
+                DimTest.splash(
+                  "Coverage skipped on file:// (Chrome cannot read local sources); loading via script src…",
+                );
+              }
+              return loadScript(src);
+            });
+        }
+
         function loadInstrumentedNotes(index) {
           if (index >= notesScripts.length) return Promise.resolve();
           var src = notesScripts[index];
@@ -288,22 +382,47 @@
               notesScripts.length +
               "…",
           );
-          return fetch(src)
-            .then(function (res) {
-              if (!res.ok) {
-                throw new Error(
-                  "Failed to fetch " + src + " (" + res.status + ")",
-                );
-              }
-              return res.text();
-            })
-            .then(function (text) {
-              var instrumented = DimTest.instrument(text, file);
-              return injectInstrumented(instrumented, file);
-            })
-            .then(function () {
-              return loadInstrumentedNotes(index + 1);
-            });
+          return loadNotesSource(src, file).then(function () {
+            return loadInstrumentedNotes(index + 1);
+          });
+        }
+
+        function loadDimuiVerifySources() {
+          // dimuiSrc is the src/ directory (same as runtime.js / ?dimuiSrc=).
+          var dimuiBase =
+            (globalThis.__DIM_BOILERPLATE__ &&
+              globalThis.__DIM_BOILERPLATE__.dimuiSrc) ||
+            "https://positive-intentions.github.io/dimui/src/";
+          try {
+            var params = new URLSearchParams(location.search || "");
+            var ds = params.get("dimuiSrc") || "";
+            if (ds) {
+              dimuiBase = ds.charAt(ds.length - 1) === "/" ? ds : ds + "/";
+            }
+          } catch (e) {}
+          var remote = [
+            "lib/notes/types.js",
+            "lib/notes/note-filters.js",
+            "lib/notes/note-editor-logic.js",
+            "components/notes/molecules/note-item.js",
+            "components/molecules/confirm-dialog.js",
+            "components/notes/organisms/note-editor.js",
+          ];
+          function next(i) {
+            if (i >= remote.length) return Promise.resolve();
+            var path = remote[i];
+            return readText(dimuiBase + path)
+              .then(function (text) {
+                if (text && DimTest.verify && DimTest.verify.add) {
+                  DimTest.verify.add(text, "dimui/" + path);
+                }
+              })
+              .catch(function () {})
+              .then(function () {
+                return next(i + 1);
+              });
+          }
+          return next(0);
         }
 
         function boot() {
@@ -315,7 +434,12 @@
               installTestIsolation();
               DimTest.splash("Loading Dim (" + impl + ")…");
               return loadScriptChain(
-                [dimSrc, "./runtime.js", dimLib + "dim.cover.global.js"],
+                [
+                  dimSrc,
+                  "./runtime.js",
+                  dimLib + "dim.cover.global.js",
+                  dimLib + "dim.verify.global.js",
+                ],
                 0,
               );
             })
@@ -333,11 +457,20 @@
                   "DimParse missing — need a dim.cover.global.js that embeds DimParse (rebuild Pages lib or ?dimLib=)",
                 );
               }
+              if (!globalThis.DimTest.verify) {
+                throw new Error(
+                  "DimTest.verify missing — need dim.verify.global.js on the Dim CDN / ?dimLib=",
+                );
+              }
               if (!globalThis.BP) {
                 throw new Error("BP runtime missing");
               }
               DimTest.splash("Instrumenting notes…");
               return loadInstrumentedNotes(0);
+            })
+            .then(function () {
+              DimTest.splash("Verifying dimui sources…");
+              return loadDimuiVerifySources();
             })
             .then(function () {
               DimTest.splash("Loading tests…");
