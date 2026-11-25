@@ -11,6 +11,8 @@
     var emptyState = await BP.require("notes/components/atoms/empty-state");
     var fab = await BP.require("notes/components/atoms/fab");
     var search = await BP.require("notes/components/molecules/search-field");
+    var types = await BP.require("notes/lib/types");
+    var editorLogic = await BP.require("notes/lib/note-editor-logic");
 
     expect(Boolean(button.Button)).toBe(true);
     expect(Boolean(icon.Icon)).toBe(true);
@@ -20,5 +22,7 @@
     expect(Boolean(emptyState.EmptyState)).toBe(true);
     expect(Boolean(fab.Fab)).toBe(true);
     expect(Boolean(search.SearchField)).toBe(true);
+    expect(Boolean(types)).toBe(true);
+    expect(Boolean(editorLogic.noteEditorReducer)).toBe(true);
   });
 })();

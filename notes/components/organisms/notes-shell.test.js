@@ -10,6 +10,18 @@
     });
   }
 
+  function resetHash() {
+    try {
+      var u = new URL(window.location.href);
+      u.hash = "#/";
+      window.history.replaceState({}, "", u.href);
+    } catch (e) {
+      try {
+        window.location.hash = "/";
+      } catch (e2) {}
+    }
+  }
+
   async function waitFor(fn, label, timeoutMs) {
     var timeout = timeoutMs || 20000;
     var start = Date.now();
@@ -70,7 +82,8 @@
   }
 
   test("notes-shell create vault seeds notes and CRUD", async function () {
-    var vault = await BP.require("notes/lib/vault");
+
+    resetHash();    var vault = await BP.require("notes/lib/vault");
     try {
       localStorage.removeItem(vault.VAULT_FLAG);
     } catch (e) {}
@@ -196,7 +209,8 @@
   });
 
   test("notes-shell wrong password calls onUnlockFailed", async function () {
-    var vault = await BP.require("notes/lib/vault");
+
+    resetHash();    var vault = await BP.require("notes/lib/vault");
     try {
       localStorage.setItem(vault.VAULT_FLAG, "1");
     } catch (e) {}
@@ -233,7 +247,8 @@
   }
 
   test("notes-shell reopen vault restore deleteForever and nav clear", async function () {
-    var vault = await BP.require("notes/lib/vault");
+
+    resetHash();    var vault = await BP.require("notes/lib/vault");
     try {
       localStorage.removeItem(vault.VAULT_FLAG);
     } catch (e) {}
@@ -357,7 +372,8 @@
   });
 
   test("notes-shell folders trash empty and mobile", async function () {
-    var vault = await BP.require("notes/lib/vault");
+
+    resetHash();    var vault = await BP.require("notes/lib/vault");
     try {
       localStorage.removeItem(vault.VAULT_FLAG);
     } catch (e) {}

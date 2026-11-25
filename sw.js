@@ -3,21 +3,23 @@
  *
  * - Precaches the local app shell on install.
  * - Stale-while-revalidate for in-scope GETs.
- * - Proxies ./pwa/cdn/{dim|dimui}/... to the GitHub Pages CDNs so Dim/dimui
- *   stay interceptable under this app's scope (no changes to those repos).
+ * - Proxies ./pwa/cdn/{dim|dimui|dimurl}/... to the GitHub Pages CDNs so
+ *   Dim/dimui/dimurl stay interceptable under this app's scope.
  * - Accepts CACHE_URLS messages so the first visit can harvest whatever
- *   Dim/dimui modules actually loaded.
+ *   Dim/dimui/dimurl modules actually loaded.
  *
- * Note: requests to /dim/ and /dimui/ are outside this worker's scope, so they
- * are never intercepted directly — only via the proxy path or CACHE_URLS.
+ * Note: requests to /dim/, /dimui/, and /dimurl/ are outside this worker's
+ * scope, so they are never intercepted directly — only via the proxy path
+ * or CACHE_URLS.
  */
 /* eslint-disable no-restricted-globals */
 (function () {
-  var CACHE_VERSION = "dim-boilerplate-v3";
+  var CACHE_VERSION = "dim-boilerplate-v4";
   var CDN_ORIGIN = "https://positive-intentions.github.io";
   var CDN_PREFIXES = {
     dim: CDN_ORIGIN + "/dim/",
     dimui: CDN_ORIGIN + "/dimui/",
+    dimurl: CDN_ORIGIN + "/dimurl/",
   };
 
   var APP_SHELL = [
@@ -96,13 +98,17 @@
     if (path.indexOf("/dimui/") === 0) {
       return toAbsolute("./pwa/cdn/dimui/" + path.slice("/dimui/".length));
     }
+    if (path.indexOf("/dimurl/") === 0) {
+      return toAbsolute("./pwa/cdn/dimurl/" + path.slice("/dimurl/".length));
+    }
     return null;
   }
 
   function isAllowedCdn(urlString) {
     return (
       urlString.indexOf(CDN_PREFIXES.dim) === 0 ||
-      urlString.indexOf(CDN_PREFIXES.dimui) === 0
+      urlString.indexOf(CDN_PREFIXES.dimui) === 0 ||
+      urlString.indexOf(CDN_PREFIXES.dimurl) === 0
     );
   }
 

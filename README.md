@@ -15,7 +15,7 @@
 
 <div align="center">
   
-[**Live Demo**](https://positive-intentions.github.io/dim-boilerplate/) | [**dim**](https://github.com/positive-intentions/dim) | [**dimui**](https://github.com/positive-intentions/dimui)
+[**Live Demo**](https://positive-intentions.github.io/dim-boilerplate/) | [**dim**](https://github.com/positive-intentions/dim) | [**dimui**](https://github.com/positive-intentions/dimui) | [**dimurl**](https://github.com/positive-intentions/dimurl)
 
 </div>
 
@@ -36,8 +36,10 @@
 **Docs:** [dim-boilerplate on positive-intentions.com](https://positive-intentions.com/docs/projects/dim/dim-boilerplate) · [Dim Getting Started](https://positive-intentions.com/docs/projects/dim/getting-started) · [Unit / E2E / Coverage](https://positive-intentions.com/docs/projects/dim/unit-tests)
 
 Your **application logic** is ordinary `.js` files in this repo. The Dim
-runtime and reusable [dimui](https://github.com/positive-intentions/dimui)
-widgets load from their GitHub Pages CDNs over the network.
+runtime, reusable [dimui](https://github.com/positive-intentions/dimui)
+widgets, and [dimurl](https://github.com/positive-intentions/dimurl) hash
+router load from their GitHub Pages CDNs over the network. Opening a note
+updates the URL (e.g. `#/note/note-welcome`) so deep links work on Pages.
 
 ## Dim in 30 seconds
 
@@ -67,12 +69,13 @@ That’s the core loop: CDN script → `define` → `html` template → `useStat
 (and friends). For effects, styling, encrypted `useStore`, and more, see the
 [Dim docs](https://positive-intentions.com/docs/projects/dim/getting-started).
 
-## The three pieces
+## The four pieces
 
 | Piece | Repo | Job here |
 | ----- | ---- | -------- |
 | **Framework** | [dim](https://github.com/positive-intentions/dim) | `define`, `html`, hooks — classic IIFE → `window.Dim` |
-| **Shared UI** | [dimui](https://github.com/positive-intentions/dimui) | Atoms (Button, Icon, …) as unbundled ESM on Pages |
+| **Shared UI** | [dimui](https://github.com/positive-intentions/dimui) | Atoms (Button, Icon, …) as classic scripts on Pages |
+| **Hash router** | [dimurl](https://github.com/positive-intentions/dimurl) | `#/note/:id`, `#/folder/:id` for static hosting |
 | **This app** | dim-boilerplate | Notes vault, folders, list/editor — **your** pure JS |
 
 ```mermaid
@@ -151,11 +154,12 @@ buttons/icons come through atom proxies.
 ## Quick start
 
 1. Clone this repo.
-2. Open `index.html` in Chrome (network required for Dim + dimui).
+2. Open `index.html` in Chrome (network required for Dim + dimui + dimurl).
 3. Create a vault password, add notes, lock / unlock.
 
 Runtimes: `?impl=js` or `?impl=wasm` (also in the header). Choice is stored in
-`localStorage`.
+`localStorage`. Local kits: `?dimuiSrc=…` and `?dimurlSrc=…`. Note URLs look
+like `#/note/note-welcome` after unlock.
 
 ## Application tests (uncompiled)
 
@@ -181,14 +185,14 @@ harness paints a pass/fail report and sets `window.__DIM_TEST__` for CI.
 
 **Iframe e2e (same runner, no transpile):** helpers in
 [`notes/e2e/helpers.js`](./notes/e2e/helpers.js) plus specs
-`notes-app` / `notes-crud` (edit note) / `notes-organize` / `app-shell` use
-`DimTest.open("./index.html")` (fetch + `srcdoc` with isolation: IndexedDB
-suffix, session `localStorage`, SW register no-op). Specs under `notes/e2e/`
-run **after** unit tests. Report layout: **Results → Coverage (unit lines) →
-E2E** (pass progress, e2e tree, **separate E2E line coverage** from
-instrumented `notes/**` inside the iframe, live preview). CI still requires
-**100% unit** coverage only; e2e coverage is logged informationally. Until
-Pages ships the harness, use a local dim lib:
+`notes-app` / `notes-crud` (edit note) / `notes-organize` / `notes-hash` /
+`app-shell` use `DimTest.open("./index.html")` (fetch + `srcdoc` with
+isolation: IndexedDB suffix, session `localStorage`, SW register no-op). Specs
+under `notes/e2e/` run **after** unit tests. Report layout: **Results →
+Coverage (unit lines) → E2E** (pass progress, e2e tree, **separate E2E line
+coverage** from instrumented `notes/**` inside the iframe, live preview). CI
+still requires **100% unit** coverage only; e2e coverage is logged
+informationally. Until Pages ships the harness, use a local dim lib:
 
 ```bash
 # Terminal A — dim Pages tree

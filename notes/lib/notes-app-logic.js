@@ -40,9 +40,6 @@ BP.module("notes/lib/notes-app-logic", [], function () {
           error: "",
         };
       }
-      if (action.type === "lock") {
-        return { password: null, creating: false, error: "" };
-      }
       if (action.type === "unlockFailed") {
         return {
           password: null,
@@ -50,7 +47,8 @@ BP.module("notes/lib/notes-app-logic", [], function () {
           error: action.message,
         };
       }
-      return state;
+      // "lock" (and any future clear actions)
+      return { password: null, creating: false, error: "" };
     },
   );
 

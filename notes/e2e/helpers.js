@@ -298,9 +298,102 @@
     return null;
   }
 
+  function locationHash(page) {
+    var w = page.window;
+    if (!w || !w.location) return "";
+    return String(w.location.hash || "");
+  }
+
+  function hashPathname(page) {
+    var h = locationHash(page);
+    if (!h || h === "#") return "/";
+    var s = h.charAt(0) === "#" ? h.slice(1) : h;
+    if (!s) return "/";
+    if (s.charAt(0) !== "/") s = "/" + s;
+    if (s.length > 1 && s.charAt(s.length - 1) === "/") {
+      s = s.slice(0, -1);
+    }
+    return s;
+  }
+
+  function setHash(page, path) {
+    var w = page.window;
+    if (!w || !w.history) {
+      return Promise.reject(new Error("DimE2E.setHash: window missing"));
+    }
+    var p = String(path || "/");
+    if (p.charAt(0) !== "/") p = "/" + p;
+    var hash = "#" + p;
+    try {
+      var u = new w.URL(w.location.href);
+      u.hash = hash;
+      w.history.replaceState({}, "", u.href);
+    } catch (e) {
+      try {
+        w.location.hash = p;
+      } catch (e2) {
+        return Promise.reject(e2);
+      }
+    }
+    try {
+      w.dispatchEvent(new w.HashChangeEvent("hashchange"));
+    } catch (e3) {
+      w.dispatchEvent(new w.Event("hashchange"));
+    }
+    return sleep(50);
+  }
+
+  function clickEditorBack(page) {
+    var editor = page.query("dimui-note-editor");
+    if (!editor || !editor.shadowRoot) {
+      return Promise.reject(new Error("DimE2E.clickEditorBack: editor missing"));
+    }
+    var back = editor.shadowRoot.querySelector(".editor-back");
+    if (!back) {
+      return Promise.reject(
+        new Error("DimE2E.clickEditorBack: back button missing"),
+      );
+    }
+    return page.click(back);
+  }
+
+  /**
+   * Open the live app via iframe.src so location.hash is real (deep links).
+   * Forwards dimuiSrc / dimurlSrc / dimLib from the parent test page.
+   */
+  function openAppWithHash(hashPath, opts) {
+    opts = opts || {};
+    var params = new URLSearchParams();
+    try {
+      var parentBp = globalThis.__DIM_BOILERPLATE__ || {};
+      if (parentBp.dimuiSrc) params.set("dimuiSrc", parentBp.dimuiSrc);
+      if (parentBp.dimurlSrc) params.set("dimurlSrc", parentBp.dimurlSrc);
+      if (parentBp.dimLib) params.set("dimLib", parentBp.dimLib);
+      var impl =
+        (document.documentElement &&
+          document.documentElement.dataset &&
+          document.documentElement.dataset.dimRuntime) ||
+        "";
+      if (impl === "js" || impl === "wasm") params.set("impl", impl);
+    } catch (e) {}
+    var qs = params.toString();
+    var path = String(hashPath || "/");
+    if (path.charAt(0) !== "/") path = "/" + path;
+    var url =
+      "./index.html" + (qs ? "?" + qs : "") + "#" + path;
+    return DimTest.open(url, {
+      ready: opts.ready || "boilerplate-app",
+      timeout: opts.timeout || 60000,
+      cover: opts.cover,
+      visible: opts.visible,
+      mode: "src",
+    });
+  }
+
   global.DimE2E = {
     sleep: sleep,
     openApp: openApp,
+    openAppWithHash: openAppWithHash,
     waitShellReady: waitShellReady,
     createVault: createVault,
     unlockVault: unlockVault,
@@ -314,5 +407,9 @@
     fillSearch: fillSearch,
     clickThemeToggle: clickThemeToggle,
     notesTheme: notesTheme,
+    locationHash: locationHash,
+    hashPathname: hashPathname,
+    setHash: setHash,
+    clickEditorBack: clickEditorBack,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
