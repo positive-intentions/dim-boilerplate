@@ -33,6 +33,8 @@
 
 ---
 
+**Docs:** [dim-boilerplate on positive-intentions.com](https://positive-intentions.com/docs/projects/dim/dim-boilerplate) · [Dim Getting Started](https://positive-intentions.com/docs/projects/dim/getting-started) · [Unit / E2E / Coverage](https://positive-intentions.com/docs/projects/dim/unit-tests)
+
 Your **application logic** is ordinary `.js` files in this repo. The Dim
 runtime and reusable [dimui](https://github.com/positive-intentions/dimui)
 widgets load from their GitHub Pages CDNs over the network.
@@ -40,13 +42,13 @@ widgets load from their GitHub Pages CDNs over the network.
 ## Dim in 30 seconds
 
 Dim is a small framework: functional components + hooks, registered as **web
-components**. Hooks come from the second argument of your component function
-(not only from top-level imports).
+components**. Load the CDN IIFE first (`window.Dim`), then register components.
+Hooks come from the second argument of your component function.
 
 ```js
 const { define } = Dim;
 
-const Counter = define({
+define({
   tag: "demo-counter",
   component: (props, { html, useState }) => {
     const [count, setCount] = useState(0);
@@ -61,9 +63,9 @@ const Counter = define({
 // Then mount: <demo-counter></demo-counter>
 ```
 
-That’s the core loop: `define` → `html` template → `useState` (and friends).
-For effects, styling, encrypted `useStore`, and more, see the
-[dim](https://github.com/positive-intentions/dim) README and docs.
+That’s the core loop: CDN script → `define` → `html` template → `useState`
+(and friends). For effects, styling, encrypted `useStore`, and more, see the
+[Dim docs](https://positive-intentions.com/docs/projects/dim/getting-started).
 
 ## The three pieces
 
@@ -160,7 +162,7 @@ Runtimes: `?impl=js` or `?impl=wasm` (also in the header). Choice is stored in
 The notes app stays plain classic scripts — no transpile for tests either.
 [`runTests.html`](./runTests.html) (next to `index.html`) loads the same Dim
 IIFE + `BP` notes modules as the app (without `app.js` / `pwa.js`), then runs
-[DimTest](https://github.com/positive-intentions/dim/tree/staging/examples/app-test)
+[DimTest](https://github.com/positive-intentions/dim/tree/HEAD/examples/app-test)
 from the Dim CDN.
 
 ```bash
@@ -302,7 +304,7 @@ In Dim `html\`...\`` templates, childless custom elements may use
   this repo).
 - CDN builds track dim / dimui Pages deploys (`staging` for dimui).
 - Local `notes/` tracks
-  [dimui’s notes demo](https://github.com/positive-intentions/dimui/tree/staging/src/demos/notes);
+  [dimui’s notes demo](https://github.com/positive-intentions/dimui/tree/HEAD/src/demos/notes);
   re-sync manually when that demo changes.
 - On `file://`, IndexedDB is shared across local HTML files in Chrome; service
   workers do not run on `file://`.
